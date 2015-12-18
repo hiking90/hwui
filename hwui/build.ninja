@@ -1,0 +1,75 @@
+defines = -DSK_BUILD_FOR_MAC -DSK_DEVELOPER=1
+includes = -I../skia/include -I../skia/include/core -I../skia/include/config -I../skia/src/core -I../android/include -I.
+cflags = -Wall -std=c++11 $defines $includes
+
+rule cc
+  command = cc $cflags -c $in -o $out
+
+rule alink
+  command = rm -f $out && libtool $libtool_flags -static -o $out $in$postbuilds
+  description = LIBTOOL-STATIC $out, POSTBUILDS
+
+build utils/SortedListImpl.o: cc utils/SortedListImpl.cpp
+build font/CacheTexture.o: cc font/CacheTexture.cpp
+build font/Font.o: cc font/Font.cpp
+build FontRenderer.o: cc FontRenderer.cpp
+build GammaFontRenderer.o: cc GammaFontRenderer.cpp
+build Caches.o: cc Caches.cpp
+build DisplayListLogBuffer.o: cc DisplayListLogBuffer.cpp
+build DisplayListRenderer.o: cc DisplayListRenderer.cpp
+build Dither.o: cc Dither.cpp
+build FboCache.o: cc FboCache.cpp
+build GradientCache.o: cc GradientCache.cpp
+build Layer.o: cc Layer.cpp
+build LayerCache.o: cc LayerCache.cpp
+build LayerRenderer.o: cc LayerRenderer.cpp
+build Matrix.o: cc Matrix.cpp
+build OpenGLRenderer.o: cc OpenGLRenderer.cpp
+build PathRenderer.o: cc PathRenderer.cpp
+build Patch.o: cc Patch.cpp
+build PatchCache.o: cc PatchCache.cpp
+build PathCache.o: cc PathCache.cpp
+build Program.o: cc Program.cpp
+build ProgramCache.o: cc ProgramCache.cpp
+build ResourceCache.o: cc ResourceCache.cpp
+build ShapeCache.o: cc ShapeCache.cpp
+build SkiaColorFilter.o: cc SkiaColorFilter.cpp
+build SkiaShader.o: cc SkiaShader.cpp
+build Snapshot.o: cc Snapshot.cpp
+build Stencil.o: cc Stencil.cpp
+build TextureCache.o: cc TextureCache.cpp
+build TextDropShadowCache.o: cc TextDropShadowCache.cpp
+
+build libhwui.a: alink $
+  utils/SortedListImpl.o $
+  font/CacheTexture.o $
+  font/Font.o $
+  FontRenderer.o $
+  GammaFontRenderer.o $
+  Caches.o $
+  DisplayListLogBuffer.o $
+  DisplayListRenderer.o $
+  Dither.o $
+  FboCache.o $
+  GradientCache.o $
+  Layer.o $
+  LayerCache.o $
+  LayerRenderer.o $
+  Matrix.o $
+  OpenGLRenderer.o $
+  PathRenderer.o $
+  Patch.o $
+  PatchCache.o $
+  PathCache.o $
+  Program.o $
+  ProgramCache.o $
+  ResourceCache.o $
+  ShapeCache.o $
+  SkiaColorFilter.o $
+  SkiaShader.o $
+  Snapshot.o $
+  Stencil.o $
+  TextureCache.o $
+  TextDropShadowCache.o
+ 
+default libhwui.a
