@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#if defined(HAVE_PTHREADS)
+#if !defined(_WIN32)
 # include <pthread.h>
 #endif
 
@@ -56,6 +56,9 @@ extern int androidCreateRawThreadEtc(android_thread_func_t entryFunction,
                                      size_t threadStackSize,
                                      android_thread_id_t *threadId);
 
+// set the same of the running thread
+extern void androidSetThreadName(const char* name);
+
 // Used by the Java Runtime to control how threads are created, so that
 // they can be proper and lovely Java threads.
 typedef int (*android_create_thread_fn)(android_thread_func_t entryFunction,
@@ -69,9 +72,6 @@ extern void androidSetCreateThreadFunc(android_create_thread_fn func);
 
 // ------------------------------------------------------------------
 // Extra functions working with raw pids.
-
-// Get pid for the current thread.
-extern pid_t androidGetTid();
 
 #ifdef HAVE_ANDROID_OS
 // Change the priority AND scheduling group of a particular thread.  The priority

@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#if defined(HAVE_PTHREADS)
+#if !defined(_WIN32)
 # include <pthread.h>
 #endif
 
@@ -31,7 +31,7 @@
 namespace android {
 // ---------------------------------------------------------------------------
 
-#if defined(HAVE_PTHREADS)
+#if !defined(_WIN32)
 
 /*
  * Simple mutex class.  The implementation is system-dependent.
@@ -84,10 +84,10 @@ private:
 inline RWLock::RWLock() {
     pthread_rwlock_init(&mRWLock, NULL);
 }
-inline RWLock::RWLock(const char* name) {
+inline RWLock::RWLock(__attribute__((unused)) const char* name) {
     pthread_rwlock_init(&mRWLock, NULL);
 }
-inline RWLock::RWLock(int type, const char* name) {
+inline RWLock::RWLock(int type, __attribute__((unused)) const char* name) {
     if (type == SHARED) {
         pthread_rwlockattr_t attr;
         pthread_rwlockattr_init(&attr);
@@ -117,7 +117,7 @@ inline void RWLock::unlock() {
     pthread_rwlock_unlock(&mRWLock);
 }
 
-#endif // HAVE_PTHREADS
+#endif // !defined(_WIN32)
 
 // ---------------------------------------------------------------------------
 }; // namespace android
