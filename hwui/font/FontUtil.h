@@ -26,22 +26,28 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #define DEFAULT_TEXT_SMALL_CACHE_WIDTH 1024
-#define DEFAULT_TEXT_SMALL_CACHE_HEIGHT 256
+#define DEFAULT_TEXT_SMALL_CACHE_HEIGHT 512
 #define DEFAULT_TEXT_LARGE_CACHE_WIDTH 2048
 #define DEFAULT_TEXT_LARGE_CACHE_HEIGHT 512
 
-#define TEXTURE_BORDER_SIZE 1
+#ifdef TEXTURE_BORDER_SIZE
+  #if TEXTURE_BORDER_SIZE != 1
+    #error TEXTURE_BORDER_SIZE other than 1 is not currently supported
+  #endif
+#else
+  #define TEXTURE_BORDER_SIZE 1
+#endif
 
 #define CACHE_BLOCK_ROUNDING_SIZE 4
 
 #if RENDER_TEXT_AS_GLYPHS
     typedef uint16_t glyph_t;
     #define TO_GLYPH(g) g
-    #define GET_METRICS(paint, glyph) paint->getGlyphMetrics(glyph)
+    #define GET_METRICS(cache, glyph) cache->getGlyphIDMetrics(glyph)
     #define GET_GLYPH(text) nextGlyph((const uint16_t**) &text)
     #define IS_END_OF_STRING(glyph) false
 
-    static glyph_t nextGlyph(const uint16_t** srcPtr) {
+    static inline glyph_t nextGlyph(const uint16_t** srcPtr) {
         const uint16_t* src = *srcPtr;
         glyph_t g = *src++;
         *srcPtr = src;
@@ -50,7 +56,7 @@
 #else
     typedef SkUnichar glyph_t;
     #define TO_GLYPH(g) ((SkUnichar) g)
-    #define GET_METRICS(paint, glyph) paint->getUnicharMetrics(glyph)
+    #define GET_METRICS(cache, glyph) cache->getUnicharMetrics(glyph)
     #define GET_GLYPH(text) SkUTF16_NextUnichar((const uint16_t**) &text)
     #define IS_END_OF_STRING(glyph) glyph < 0
 #endif

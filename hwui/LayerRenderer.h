@@ -27,6 +27,8 @@
 namespace android {
 namespace uirenderer {
 
+class RenderState;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Defines
 ///////////////////////////////////////////////////////////////////////////////
@@ -44,30 +46,31 @@ namespace uirenderer {
 
 class LayerRenderer: public OpenGLRenderer {
 public:
-    ANDROID_API LayerRenderer(Layer* layer);
+    LayerRenderer(RenderState& renderState, Layer* layer);
     virtual ~LayerRenderer();
 
-    virtual void setViewport(int width, int height);
-    virtual status_t prepareDirty(float left, float top, float right, float bottom, bool opaque);
-    virtual status_t clear(float left, float top, float right, float bottom, bool opaque);
-    virtual void finish();
+    virtual void onViewportInitialized() override { /* do nothing */ }
+    virtual void prepareDirty(float left, float top, float right, float bottom,
+            bool opaque) override;
+    virtual void clear(float left, float top, float right, float bottom, bool opaque) override;
+    virtual bool finish() override;
 
-    ANDROID_API static Layer* createTextureLayer(bool isOpaque);
-    ANDROID_API static Layer* createLayer(uint32_t width, uint32_t height, bool isOpaque = false);
-    ANDROID_API static bool resizeLayer(Layer* layer, uint32_t width, uint32_t height);
-    ANDROID_API static void updateTextureLayer(Layer* layer, uint32_t width, uint32_t height,
-            bool isOpaque, GLenum renderTarget, float* transform);
-    ANDROID_API static void destroyLayer(Layer* layer);
-    ANDROID_API static void destroyLayerDeferred(Layer* layer);
-    ANDROID_API static bool copyLayer(Layer* layer, SkBitmap* bitmap);
+    static Layer* createTextureLayer(RenderState& renderState);
+    static Layer* createRenderLayer(RenderState& renderState, uint32_t width, uint32_t height);
+    static bool resizeLayer(Layer* layer, uint32_t width, uint32_t height);
+    static void updateTextureLayer(Layer* layer, uint32_t width, uint32_t height,
+            bool isOpaque, bool forceFilter, GLenum renderTarget, float* textureTransform);
+    static void destroyLayer(Layer* layer);
+    static bool copyLayer(RenderState& renderState, Layer* layer, SkBitmap* bitmap);
 
-    static void flushLayer(Layer* layer);
+    static void flushLayer(RenderState& renderState, Layer* layer);
 
 protected:
-    virtual bool hasLayer();
-    virtual Region* getRegion();
-    virtual GLint getTargetFbo();
-    virtual bool suppressErrorChecks();
+    virtual void ensureStencilBuffer() override;
+    virtual bool hasLayer() const override;
+    virtual Region* getRegion() const override;
+    virtual GLuint getTargetFbo() const override;
+    virtual bool suppressErrorChecks() const override;
 
 private:
     void generateMesh();

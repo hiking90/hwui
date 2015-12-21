@@ -17,16 +17,22 @@
 #ifndef ANDROID_HWUI_LAYER_H
 #define ANDROID_HWUI_LAYER_H
 
+#include <cutils/compiler.h>
 #include <sys/types.h>
+#include <utils/StrongPointer.h>
+#include <utils/RefBase.h>
+#include <memory>
 
 #include <GLES2/gl2.h>
 
 #include <ui/Region.h>
 
+#include <SkPaint.h>
 #include <SkXfermode.h>
 
+#include "Matrix.h"
 #include "Rect.h"
-#include "SkiaColorFilter.h"
+#include "RenderBuffer.h"
 #include "Texture.h"
 #include "Vertex.h"
 
@@ -38,17 +44,46 @@ namespace uirenderer {
 ///////////////////////////////////////////////////////////////////////////////
 
 // Forward declarations
+class Caches;
+class RenderNode;
+class RenderState;
 class OpenGLRenderer;
-class DisplayList;
+class DeferredDisplayList;
+struct DeferStateStruct;
 
 /**
  * A layer has dimensions and is backed by an OpenGL texture or FBO.
  */
-struct Layer {
-    Layer(const uint32_t layerWidth, const uint32_t layerHeight);
+class Layer : public VirtualLightRefBase {
+public:
+    enum Type {
+        kType_Texture,
+        kType_DisplayList,
+    };
+
+    // layer lifecycle, controlled from outside
+    enum State {
+        kState_Uncached = 0,
+        kState_InCache = 1,
+        kState_FailedToCache = 2,
+        kState_RemovedFromCache = 3,
+        kState_DeletedFromCache = 4,
+        kState_InGarbageList = 5,
+    };
+    State state; // public for logging/debugging purposes
+
+    Layer(Type type, RenderState& renderState, uint32_t layerWidth, uint32_t layerHeight);
     ~Layer();
 
-    void removeFbo();
+    static uint32_t computeIdealWidth(uint32_t layerWidth);
+    static uint32_t computeIdealHeight(uint32_t layerHeight);
+
+    /**
+     * Calling this method will remove (either by recycling or
+     * destroying) the associated FBO, if present, and any render
+     * buffer (stencil for instance.)
+     */
+    void removeFbo(bool flush = true);
 
     /**
      * Sets this layer's region to a rectangle. Computes the appropriate
@@ -69,36 +104,53 @@ struct Layer {
         regionRect.translate(layer.left, layer.top);
     }
 
-    void updateDeferred(OpenGLRenderer* renderer, DisplayList* displayList,
-            int left, int top, int right, int bottom) {
-        this->renderer = renderer;
-        this->displayList = displayList;
-        const Rect r(left, top, right, bottom);
-        dirtyRect.unionWith(r);
-        deferredUpdateScheduled = true;
+    void setWindowTransform(Matrix4& windowTransform) {
+        cachedInvTransformInWindow.loadInverse(windowTransform);
+        rendererLightPosDirty = true;
     }
 
-    inline uint32_t getWidth() {
+    void updateDeferred(RenderNode* renderNode, int left, int top, int right, int bottom);
+
+    inline uint32_t getWidth() const {
         return texture.width;
     }
 
-    inline uint32_t getHeight() {
+    inline uint32_t getHeight() const {
         return texture.height;
     }
+
+    /**
+     * Resize the layer and its texture if needed.
+     *
+     * @param width The new width of the layer
+     * @param height The new height of the layer
+     *
+     * @return True if the layer was resized or nothing happened, false if
+     *         a failure occurred during the resizing operation
+     */
+    bool resize(const uint32_t width, const uint32_t height);
 
     void setSize(uint32_t width, uint32_t height) {
         texture.width = width;
         texture.height = height;
     }
 
-    ANDROID_API void setPaint(SkPaint* paint);
+    ANDROID_API void setPaint(const SkPaint* paint);
 
     inline void setBlend(bool blend) {
         texture.blend = blend;
     }
 
-    inline bool isBlend() {
+    inline bool isBlend() const {
         return texture.blend;
+    }
+
+    inline void setForceFilter(bool forceFilter) {
+        this->forceFilter = forceFilter;
+    }
+
+    inline bool getForceFilter() const {
+        return forceFilter;
     }
 
     inline void setAlpha(int alpha) {
@@ -110,11 +162,11 @@ struct Layer {
         this->mode = mode;
     }
 
-    inline int getAlpha() {
+    inline int getAlpha() const {
         return alpha;
     }
 
-    inline SkXfermode::Mode getMode() {
+    inline SkXfermode::Mode getMode() const {
         return mode;
     }
 
@@ -122,7 +174,7 @@ struct Layer {
         this->empty = empty;
     }
 
-    inline bool isEmpty() {
+    inline bool isEmpty() const {
         return empty;
     }
 
@@ -130,15 +182,33 @@ struct Layer {
         this->fbo = fbo;
     }
 
-    inline GLuint getFbo() {
+    inline GLuint getFbo() const {
         return fbo;
     }
 
-    inline GLuint getTexture() {
+    inline void setStencilRenderBuffer(RenderBuffer* renderBuffer) {
+        if (RenderBuffer::isStencilBuffer(renderBuffer->getFormat())) {
+            this->stencil = renderBuffer;
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+                    GL_RENDERBUFFER, stencil->getName());
+        } else {
+            ALOGE("The specified render buffer is not a stencil buffer");
+        }
+    }
+
+    inline RenderBuffer* getStencilRenderBuffer() const {
+        return stencil;
+    }
+
+    inline GLuint getTextureId() const {
         return texture.id;
     }
 
-    inline GLenum getRenderTarget() {
+    inline Texture& getTexture() {
+        return texture;
+    }
+
+    inline GLenum getRenderTarget() const {
         return renderTarget;
     }
 
@@ -154,7 +224,7 @@ struct Layer {
         texture.setFilter(filter, bindTexture, force, renderTarget);
     }
 
-    inline bool isCacheable() {
+    inline bool isCacheable() const {
         return cacheable;
     }
 
@@ -162,7 +232,7 @@ struct Layer {
         this->cacheable = cacheable;
     }
 
-    inline bool isDirty() {
+    inline bool isDirty() const {
         return dirty;
     }
 
@@ -170,58 +240,37 @@ struct Layer {
         this->dirty = dirty;
     }
 
-    inline bool isTextureLayer() {
-        return textureLayer;
+    inline bool isTextureLayer() const {
+        return type == kType_Texture;
     }
 
-    inline void setTextureLayer(bool textureLayer) {
-        this->textureLayer = textureLayer;
-    }
-
-    inline SkiaColorFilter* getColorFilter() {
+    inline SkColorFilter* getColorFilter() const {
         return colorFilter;
     }
 
-    ANDROID_API void setColorFilter(SkiaColorFilter* filter);
+    ANDROID_API void setColorFilter(SkColorFilter* filter);
 
-    inline void bindTexture() {
-        if (texture.id) {
-            glBindTexture(renderTarget, texture.id);
-        }
+    inline void setConvexMask(const SkPath* convexMask) {
+        this->convexMask = convexMask;
     }
 
-    inline void generateTexture() {
-        if (!texture.id) {
-            glGenTextures(1, &texture.id);
-        }
+    inline const SkPath* getConvexMask() {
+        return convexMask;
     }
 
-    inline void deleteTexture() {
-        if (texture.id) {
-            glDeleteTextures(1, &texture.id);
-            texture.id = 0;
-        }
-    }
+    void bindStencilRenderBuffer() const;
+
+    void bindTexture() const;
+    void generateTexture();
+    void allocateTexture();
+    void deleteTexture();
 
     /**
      * When the caller frees the texture itself, the caller
      * must call this method to tell this layer that it lost
      * the texture.
      */
-    void clearTexture() {
-        texture.id = 0;
-    }
-
-    inline void deleteFbo() {
-        if (fbo) glDeleteFramebuffers(1, &fbo);
-    }
-
-    inline void allocateTexture(GLenum format, GLenum storage) {
-#if DEBUG_LAYERS
-        ALOGD("  Allocate layer: %dx%d", getWidth(), getHeight());
-#endif
-        glTexImage2D(renderTarget, 0, format, getWidth(), getHeight(), 0, format, storage, NULL);
-    }
+    ANDROID_API void clearTexture();
 
     inline mat4& getTexTransform() {
         return texTransform;
@@ -231,6 +280,23 @@ struct Layer {
         return transform;
     }
 
+    void defer(const OpenGLRenderer& rootRenderer);
+    void cancelDefer();
+    void flush();
+    void render(const OpenGLRenderer& rootRenderer);
+
+    /**
+     * Posts a decStrong call to the appropriate thread.
+     * Thread-safe.
+     */
+    void postDecStrong();
+
+    /**
+     * Lost the GL context but the layer is still around, mark it invalid internally
+     * so the dtor knows not to do any GL work
+     */
+    void onGlContextLost();
+
     /**
      * Bounds of the layer.
      */
@@ -239,6 +305,10 @@ struct Layer {
      * Texture coordinates of the layer.
      */
     Rect texCoords;
+    /**
+     * Clipping rectangle.
+     */
+    Rect clipRect;
 
     /**
      * Dirty region indicating what parts of the layer
@@ -254,29 +324,43 @@ struct Layer {
     /**
      * If the layer can be rendered as a mesh, this is non-null.
      */
-    TextureVertex* mesh;
-    uint16_t* meshIndices;
-    GLsizei meshElementCount;
+    TextureVertex* mesh = nullptr;
+    GLsizei meshElementCount = 0;
 
     /**
      * Used for deferred updates.
      */
-    bool deferredUpdateScheduled;
-    OpenGLRenderer* renderer;
-    DisplayList* displayList;
+    bool deferredUpdateScheduled = false;
+    std::unique_ptr<OpenGLRenderer> renderer;
+    sp<RenderNode> renderNode;
     Rect dirtyRect;
+    bool debugDrawUpdate = false;
+    bool hasDrawnSinceUpdate = false;
+    bool wasBuildLayered = false;
 
 private:
+    void requireRenderer();
+    void updateLightPosFromRenderer(const OpenGLRenderer& rootRenderer);
+
+    Caches& caches;
+
+    RenderState& renderState;
+
     /**
      * Name of the FBO used to render the layer. If the name is 0
      * this layer is not backed by an FBO, but a simple texture.
      */
-    GLuint fbo;
+    GLuint fbo = 0;
+
+    /**
+     * The render buffer used as the stencil buffer.
+     */
+    RenderBuffer* stencil = nullptr;
 
     /**
      * Indicates whether this layer has been used already.
      */
-    bool empty;
+    bool empty = true;
 
     /**
      * The texture backing this layer.
@@ -286,38 +370,43 @@ private:
     /**
      * If set to true (by default), the layer can be reused.
      */
-    bool cacheable;
+    bool cacheable = true;
 
     /**
-     * When set to true, this layer must be treated as a texture
-     * layer.
+     * Denotes whether the layer is a DisplayList, or Texture layer.
      */
-    bool textureLayer;
+    const Type type;
 
     /**
      * When set to true, this layer is dirty and should be cleared
      * before any rendering occurs.
      */
-    bool dirty;
+    bool dirty = false;
 
     /**
      * Indicates the render target.
      */
-    GLenum renderTarget;
+    GLenum renderTarget = GL_TEXTURE_2D;
 
     /**
      * Color filter used to draw this layer. Optional.
      */
-    SkiaColorFilter* colorFilter;
+    SkColorFilter* colorFilter = nullptr;
+
+    /**
+     * Indicates raster data backing the layer is scaled, requiring filtration.
+     */
+    bool forceFilter = false;
 
     /**
      * Opacity of the layer.
      */
-    int alpha;
+    int alpha = 255;
+
     /**
      * Blending mode of the layer.
      */
-    SkXfermode::Mode mode;
+    SkXfermode::Mode mode = SkXfermode::kSrcOver_Mode;
 
     /**
      * Optional texture coordinates transform.
@@ -328,6 +417,25 @@ private:
      * Optional transform.
      */
     mat4 transform;
+
+    /**
+     * Cached transform of layer in window, updated only on creation / resize
+     */
+    mat4 cachedInvTransformInWindow;
+    bool rendererLightPosDirty = true;
+
+    /**
+     * Used to defer display lists when the layer is updated with a
+     * display list.
+     */
+    std::unique_ptr<DeferredDisplayList> deferredList;
+
+    /**
+     * This convex path should be used to mask the layer's draw to the screen.
+     *
+     * Data not owned/managed by layer object.
+     */
+    const SkPath* convexMask = nullptr;
 
 }; // struct Layer
 

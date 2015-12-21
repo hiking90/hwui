@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
-#include <utils/Log.h>
+#include <SkGlyph.h>
 
-#include "Debug.h"
 #include "CacheTexture.h"
+#include "FontUtil.h"
+#include "../Caches.h"
+#include "../Debug.h"
+#include "../Extensions.h"
+#include "../PixelBuffer.h"
 
 namespace android {
 namespace uirenderer {
@@ -39,7 +43,7 @@ CacheBlock* CacheBlock::insertBlock(CacheBlock* head, CacheBlock* newBlock) {
 #endif
 
     CacheBlock* currBlock = head;
-    CacheBlock* prevBlock = NULL;
+    CacheBlock* prevBlock = nullptr;
 
     while (currBlock && currBlock->mY != TEXTURE_BORDER_SIZE) {
         if (newBlock->mWidth < currBlock->mWidth) {
@@ -105,8 +109,153 @@ CacheBlock* CacheBlock::removeBlock(CacheBlock* head, CacheBlock* blockToRemove)
 // CacheTexture
 ///////////////////////////////////////////////////////////////////////////////
 
+CacheTexture::CacheTexture(uint16_t width, uint16_t height, GLenum format, uint32_t maxQuadCount)
+        : mTexture(Caches::getInstance())
+        , mFormat(format)
+        , mMaxQuadCount(maxQuadCount)
+        , mCaches(Caches::getInstance()) {
+    mTexture.width = width;
+    mTexture.height = height;
+    mTexture.blend = true;
+
+    mCacheBlocks = new CacheBlock(TEXTURE_BORDER_SIZE, TEXTURE_BORDER_SIZE,
+            getWidth() - TEXTURE_BORDER_SIZE, getHeight() - TEXTURE_BORDER_SIZE);
+
+    // OpenGL ES 3.0+ lets us specify the row length for unpack operations such
+    // as glTexSubImage2D(). This allows us to upload a sub-rectangle of a texture.
+    // With OpenGL ES 2.0 we have to upload entire stripes instead.
+    mHasUnpackRowLength = mCaches.extensions().hasUnpackRowLength();
+}
+
+CacheTexture::~CacheTexture() {
+    releaseMesh();
+    releasePixelBuffer();
+    reset();
+}
+
+void CacheTexture::reset() {
+    // Delete existing cache blocks
+    while (mCacheBlocks != nullptr) {
+        CacheBlock* tmpBlock = mCacheBlocks;
+        mCacheBlocks = mCacheBlocks->mNext;
+        delete tmpBlock;
+    }
+    mNumGlyphs = 0;
+    mCurrentQuad = 0;
+}
+
+void CacheTexture::init() {
+    // reset, then create a new remainder space to start again
+    reset();
+    mCacheBlocks = new CacheBlock(TEXTURE_BORDER_SIZE, TEXTURE_BORDER_SIZE,
+            getWidth() - TEXTURE_BORDER_SIZE, getHeight() - TEXTURE_BORDER_SIZE);
+}
+
+void CacheTexture::releaseMesh() {
+    delete[] mMesh;
+}
+
+void CacheTexture::releasePixelBuffer() {
+    if (mPixelBuffer) {
+        delete mPixelBuffer;
+        mPixelBuffer = nullptr;
+    }
+    if (mTexture.id) {
+        mCaches.textureState().deleteTexture(mTexture.id);
+        mTexture.id = 0;
+    }
+    mDirty = false;
+    mCurrentQuad = 0;
+}
+
+void CacheTexture::setLinearFiltering(bool linearFiltering) {
+    mTexture.setFilter(linearFiltering ? GL_LINEAR : GL_NEAREST);
+}
+
+void CacheTexture::allocateMesh() {
+    if (!mMesh) {
+        mMesh = new TextureVertex[mMaxQuadCount * 4];
+    }
+}
+
+void CacheTexture::allocatePixelBuffer() {
+    if (!mPixelBuffer) {
+        mPixelBuffer = PixelBuffer::create(mFormat, getWidth(), getHeight());
+    }
+
+    if (!mTexture.id) {
+        glGenTextures(1, &mTexture.id);
+
+        mCaches.textureState().bindTexture(mTexture.id);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        // Initialize texture dimensions
+        glTexImage2D(GL_TEXTURE_2D, 0, mFormat, getWidth(), getHeight(), 0,
+                mFormat, GL_UNSIGNED_BYTE, nullptr);
+
+        const GLenum filtering = getLinearFiltering() ? GL_LINEAR : GL_NEAREST;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filtering);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filtering);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+}
+
+bool CacheTexture::upload() {
+    const Rect& dirtyRect = mDirtyRect;
+
+    uint32_t x = mHasUnpackRowLength ? dirtyRect.left : 0;
+    uint32_t y = dirtyRect.top;
+    uint32_t width = mHasUnpackRowLength ? dirtyRect.getWidth() : getWidth();
+    uint32_t height = dirtyRect.getHeight();
+
+    // The unpack row length only needs to be specified when a new
+    // texture is bound
+    if (mHasUnpackRowLength) {
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, getWidth());
+    }
+
+    mPixelBuffer->upload(x, y, width, height);
+    setDirty(false);
+
+    return mHasUnpackRowLength;
+}
+
+void CacheTexture::setDirty(bool dirty) {
+    mDirty = dirty;
+    if (!dirty) {
+        mDirtyRect.setEmpty();
+    }
+}
+
 bool CacheTexture::fitBitmap(const SkGlyph& glyph, uint32_t* retOriginX, uint32_t* retOriginY) {
-    if (glyph.fHeight + TEXTURE_BORDER_SIZE * 2 > mHeight) {
+    switch (glyph.fMaskFormat) {
+        case SkMask::kA8_Format:
+        case SkMask::kBW_Format:
+            if (mFormat != GL_ALPHA) {
+#if DEBUG_FONT_RENDERER
+                ALOGD("fitBitmap: texture format %x is inappropriate for monochromatic glyphs",
+                        mFormat);
+#endif
+                return false;
+            }
+            break;
+        case SkMask::kARGB32_Format:
+            if (mFormat != GL_RGBA) {
+#if DEBUG_FONT_RENDERER
+                ALOGD("fitBitmap: texture format %x is inappropriate for colour glyphs", mFormat);
+#endif
+                return false;
+            }
+            break;
+        default:
+#if DEBUG_FONT_RENDERER
+            ALOGD("fitBitmap: unknown glyph format %x encountered", glyph.fMaskFormat);
+#endif
+            return false;
+    }
+
+    if (glyph.fHeight + TEXTURE_BORDER_SIZE * 2 > getHeight()) {
         return false;
     }
 
@@ -143,10 +292,10 @@ bool CacheTexture::fitBitmap(const SkGlyph& glyph, uint32_t* retOriginX, uint32_
                 cacheBlock->mWidth -= roundedUpW;
                 cacheBlock->mX += roundedUpW;
 
-                if (mHeight - glyphH >= glyphH) {
+                if (getHeight() - glyphH >= glyphH) {
                     // There's enough height left over to create a new CacheBlock
                     CacheBlock* newBlock = new CacheBlock(oldX, glyphH + TEXTURE_BORDER_SIZE,
-                            roundedUpW, mHeight - glyphH - TEXTURE_BORDER_SIZE);
+                            roundedUpW, getHeight() - glyphH - TEXTURE_BORDER_SIZE);
 #if DEBUG_FONT_RENDERER
                     ALOGD("fitBitmap: Created new block: this, x, y, w, h = %p, %d, %d, %d, %d",
                             newBlock, newBlock->mX, newBlock->mY,
@@ -165,7 +314,7 @@ bool CacheTexture::fitBitmap(const SkGlyph& glyph, uint32_t* retOriginX, uint32_
 #endif
             }
 
-            if (cacheBlock->mHeight < fmin(glyphH, glyphW)) {
+            if (cacheBlock->mHeight < std::min(glyphH, glyphW)) {
                 // If remaining space in this block is too small to be useful, remove it
                 mCacheBlocks = CacheBlock::removeBlock(mCacheBlocks, cacheBlock);
             }
