@@ -1,0 +1,6 @@
+*.o
+.*
+depot_tools/
+skia/
+tools/tools
+*.sublime-*
