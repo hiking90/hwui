@@ -114,6 +114,7 @@ int32_t android_atomic_or(int32_t value, volatile int32_t* addr)
     return atomic_fetch_or_explicit(a, value, memory_order_release);
 }
 
+#if 0
 /*
  * Perform an atomic load with "acquire" or "release" ordering.
  *
@@ -233,5 +234,6 @@ void android_memory_barrier(void)
  */
 #define android_atomic_write android_atomic_release_store
 #define android_atomic_cmpxchg android_atomic_release_cas
+#endif
 
 #endif // ANDROID_CUTILS_ATOMIC_H

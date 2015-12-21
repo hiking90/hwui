@@ -1,4 +1,4 @@
-defines = -DSK_BUILD_FOR_MAC -DSK_DEVELOPER=1
+defines = -DSK_BUILD_FOR_MAC -DSK_DEVELOPER=1 -D_STDATOMIC_HAVE_ATOMIC
 includes = -I../skia/include -I../skia/include/utils -I../skia/include/private -I../skia/include/core -I../skia/include/config -I../skia/src/core -I../android/include -I.
 cflags = -Wall -std=c++11 $defines $includes
 
