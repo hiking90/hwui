@@ -1,12 +1,12 @@
-defines = -DSK_BUILD_FOR_MAC -DSK_DEVELOPER=1 -D_STDATOMIC_HAVE_ATOMIC
-includes = -I../skia/include -I../skia/include/utils -I../skia/include/private -I../skia/include/core -I../skia/include/config -I../skia/src/core -I../android/include -I.
+defines = -DSK_BUILD_FOR_MAC -DSK_DEVELOPER=1 -D_STDATOMIC_HAVE_ATOMIC -D_FOR_NON_ANDROID
+includes = -I../skia/include -I../skia/include/utils -I../skia/include/pathops -I../skia/src/utils -I../skia/include/private -I../skia/include/core -I../skia/include/config -I../skia/src/core -I../android/include -I.
 cflags = -Wall -std=c++11 $defines $includes
 
 rule cc
   command = cc $cflags -c $in -o $out
 
 rule alink
-  command = rm -f $out && libtool $libtool_flags -static -o $out $in$postbuilds
+  command = rm -f $out && libtool --mode=link  gcc -static -o $out $in$postbuilds
   description = LIBTOOL-STATIC $out, POSTBUILDS
 
 
@@ -94,12 +94,6 @@ build libhwui.a: alink $
     renderstate/Scissor.o $
     renderstate/Stencil.o $
     renderstate/TextureState.o $
-    renderthread/CanvasContext.o $
-    renderthread/DrawFrameTask.o $
-    renderthread/EglManager.o $
-    renderthread/RenderProxy.o $
-    renderthread/RenderTask.o $
-    renderthread/TimeLord.o $
     thread/TaskManager.o $
     utils/Blur.o $
     utils/GLUtils.o $
@@ -115,7 +109,6 @@ build libhwui.a: alink $
     ClipArea.o $
     DamageAccumulator.o $
     DeferredDisplayList.o $
-    DeferredLayerUpdater.o $
     DisplayList.o $
     DisplayListCanvas.o $
     Dither.o $
@@ -127,9 +120,7 @@ build libhwui.a: alink $
     GammaFontRenderer.o $
     GlopBuilder.o $
     GradientCache.o $
-    Image.o $
     Interpolator.o $
-    JankTracker.o $
     Layer.o $
     LayerCache.o $
     LayerRenderer.o $
@@ -148,7 +139,6 @@ build libhwui.a: alink $
     RenderProperties.o $
     ResourceCache.o $
     ShadowTessellator.o $
-    SkiaCanvas.o $
     SkiaCanvasProxy.o $
     SkiaShader.o $
     Snapshot.o $
@@ -159,6 +149,16 @@ build libhwui.a: alink $
     TextureCache.o
 
 #     renderthread/RenderThread.o $
+#    renderthread/CanvasContext.o $
+#    renderthread/DrawFrameTask.o $
+#    renderthread/EglManager.o $
+#    renderthread/RenderProxy.o $
+#    renderthread/RenderTask.o $
+#    renderthread/TimeLord.o $
+#    DeferredLayerUpdater.o $
+#    JankTracker.o $
+#    SkiaCanvas.o $
+#    Image.o $
 
 
 default libhwui.a

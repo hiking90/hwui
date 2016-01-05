@@ -59,14 +59,15 @@ Snapshot::Snapshot(const sp<Snapshot>& s, int saveFlags)
         , mClipArea(nullptr)
         , mViewportData(s->mViewportData)
         , mRelativeLightCenter(s->mRelativeLightCenter) {
-    if (saveFlags & SkCanvas::kMatrix_SaveFlag) {
+    // Modified by Jeff
+    if (1 /*saveFlags & SkCanvas::kMatrix_SaveFlag*/) {
         mTransformRoot.load(*s->transform);
         transform = &mTransformRoot;
     } else {
         transform = s->transform;
     }
 
-    if (saveFlags & SkCanvas::kClip_SaveFlag) {
+    if (1 /*saveFlags & SkCanvas::kClip_SaveFlag*/) {
         mClipAreaRoot = s->getClipArea();
         mClipArea = &mClipAreaRoot;
     } else {

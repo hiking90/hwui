@@ -39,6 +39,9 @@
 #include <SkPaint.h>
 #include <SkRegion.h>
 #include <SkXfermode.h>
+#ifdef _FOR_NON_ANDROID
+#include <SkDrawLooper.h>
+#endif
 
 #include <utils/Blur.h>
 #include <utils/Functor.h>

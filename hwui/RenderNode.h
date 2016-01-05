@@ -126,7 +126,7 @@ public:
 
     void setName(const char* name) {
         if (name) {
-            char* lastPeriod = strrchr(name, '.');
+            char* lastPeriod = (char *) strrchr(name, '.');
             if (lastPeriod) {
                 mName.setTo(lastPeriod + 1);
             } else {

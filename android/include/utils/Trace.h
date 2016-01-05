@@ -63,6 +63,24 @@ private:
 
 #define ATRACE_NAME(...)
 #define ATRACE_CALL()
+/**
+ * Trace the beginning of a context.  name is used to identify the context.
+ * This is often used to time function execution.
+ */
+#define ATRACE_BEGIN(name)
+
+/**
+ * Trace the end of a context.
+ * This should match up (and occur after) a corresponding ATRACE_BEGIN.
+ */
+#define ATRACE_END()
+
+/**
+ * Test if a given tag is currently enabled.
+ * Returns nonzero if the tag is enabled, otherwise zero.
+ * It can be used as a guard condition around more expensive trace calculations.
+ */
+#define ATRACE_ENABLED() (false)
 
 #endif // HAVE_ANDROID_OS
 

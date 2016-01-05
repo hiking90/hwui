@@ -199,7 +199,8 @@ bool tryStoreBitmap(Caches& caches, const SkShader& shader, const Matrix4& model
         SkiaShaderData::BitmapShaderData* outData) {
     SkBitmap bitmap;
     SkShader::TileMode xy[2];
-    if (shader.asABitmap(&bitmap, nullptr, xy) != SkShader::kDefault_BitmapType) {
+    // Modified by Jeff
+    if (shader.isABitmap(&bitmap, nullptr, xy) != true) {
         return false;
     }
 
@@ -266,8 +267,9 @@ SkiaShaderType getComposeSubType(const SkShader& shader) {
             return kNone_SkiaShaderType;
     }
 
+    // Modified by Jeff
     // The shader is not a gradient. Check for a bitmap shader.
-    if (shader.asABitmap(nullptr, nullptr, nullptr) == SkShader::kDefault_BitmapType) {
+    if (shader.isABitmap(nullptr, nullptr, nullptr) == true /*SkShader::kDefault_BitmapType*/) {
         return kBitmap_SkiaShaderType;
     }
     return kNone_SkiaShaderType;

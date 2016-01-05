@@ -41,7 +41,7 @@ CanvasState::~CanvasState() {
 void CanvasState::initializeSaveStack(float clipLeft, float clipTop,
         float clipRight, float clipBottom, const Vector3& lightCenter) {
     mSnapshot = new Snapshot(mFirstSnapshot,
-            SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag);
+            1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag*/);
     mSnapshot->setClip(clipLeft, clipTop, clipRight, clipBottom);
     mSnapshot->fbo = mCanvas.getTargetFbo();
     mSnapshot->setRelativeLightCenter(lightCenter);
@@ -58,7 +58,7 @@ void CanvasState::setViewport(int width, int height) {
     // and viewport can be queried safely.
     // TODO: remove, combine viewport + save stack initialization
     mSnapshot = new Snapshot(mFirstSnapshot,
-            SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag);
+            1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag*/);
     mSaveCount = 1;
 }
 

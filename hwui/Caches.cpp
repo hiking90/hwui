@@ -87,12 +87,15 @@ void Caches::initFont() {
 }
 
 void Caches::initExtensions() {
+#ifndef _FOR_NON_ANDROID
     if (mExtensions.hasDebugMarker()) {
         eventMark = glInsertEventMarkerEXT;
 
         startMark = glPushGroupMarkerEXT;
         endMark = glPopGroupMarkerEXT;
-    } else {
+    } else
+#endif
+    {
         eventMark = eventMarkNull;
         startMark = startMarkNull;
         endMark = endMarkNull;
@@ -282,15 +285,19 @@ void Caches::flush(FlushMode mode) {
 ///////////////////////////////////////////////////////////////////////////////
 
 void Caches::startTiling(GLuint x, GLuint y, GLuint width, GLuint height, bool discard) {
+#ifndef _FOR_NON_ANDROID
     if (mExtensions.hasTiledRendering() && !Properties::debugOverdraw) {
         glStartTilingQCOM(x, y, width, height, (discard ? GL_NONE : GL_COLOR_BUFFER_BIT0_QCOM));
     }
+#endif
 }
 
 void Caches::endTiling() {
+#ifndef _FOR_NON_ANDROID
     if (mExtensions.hasTiledRendering() && !Properties::debugOverdraw) {
         glEndTilingQCOM(GL_COLOR_BUFFER_BIT0_QCOM);
     }
+#endif
 }
 
 bool Caches::hasRegisteredFunctors() {

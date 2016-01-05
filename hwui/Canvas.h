@@ -67,14 +67,16 @@ public:
 // ----------------------------------------------------------------------------
     // Save (layer)
     virtual int getSaveCount() const = 0;
-    virtual int save(SkCanvas::SaveFlags flags) = 0;
+    // Modified by Jeff
+    virtual int save(/*SkCanvas::SaveFlags*/int flags) = 0;
     virtual void restore() = 0;
     virtual void restoreToCount(int saveCount) = 0;
 
+    // Modified by Jeff
     virtual int saveLayer(float left, float top, float right, float bottom,
-                const SkPaint* paint, SkCanvas::SaveFlags flags) = 0;
+                const SkPaint* paint, /*SkCanvas::SaveFlags*/int flags) = 0;
     virtual int saveLayerAlpha(float left, float top, float right, float bottom,
-            int alpha, SkCanvas::SaveFlags flags) = 0;
+            int alpha, /*SkCanvas::SaveFlags*/int flags) = 0;
 
     // Matrix
     virtual void getMatrix(SkMatrix* outMatrix) const = 0;

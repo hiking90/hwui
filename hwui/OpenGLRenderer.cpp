@@ -176,7 +176,8 @@ void OpenGLRenderer::discardFramebuffer(float left, float top, float right, floa
         const GLenum attachments[] = {
                 isFbo ? (const GLenum) GL_COLOR_EXT : (const GLenum) GL_COLOR_ATTACHMENT0,
                 isFbo ? (const GLenum) GL_STENCIL_EXT : (const GLenum) GL_STENCIL_ATTACHMENT };
-        glDiscardFramebufferEXT(GL_FRAMEBUFFER, 1, attachments);
+        // Modified by Jeff
+        // glDiscardFramebufferEXT(GL_FRAMEBUFFER, 1, attachments);
     }
 }
 
@@ -522,7 +523,8 @@ void OpenGLRenderer::onSnapshotRestored(const Snapshot& removed, const Snapshot&
 int OpenGLRenderer::saveLayer(float left, float top, float right, float bottom,
         const SkPaint* paint, int flags, const SkPath* convexMask) {
     // force matrix/clip isolation for layer
-    flags |= SkCanvas::kClip_SaveFlag | SkCanvas::kMatrix_SaveFlag;
+    // Modified by Jeff
+    // flags |= SkCanvas::kClip_SaveFlag | SkCanvas::kMatrix_SaveFlag;
 
     const int count = mState.saveSnapshot(flags);
 
@@ -583,7 +585,8 @@ int OpenGLRenderer::saveLayerDeferred(float left, float top, float right, float 
         const SkPaint* paint, int flags) {
     const int count = mState.saveSnapshot(flags);
 
-    if (!mState.currentlyIgnored() && (flags & SkCanvas::kClipToLayer_SaveFlag)) {
+    // Modified by Jeff
+    if (!mState.currentlyIgnored() && (true /*flags & SkCanvas::kClipToLayer_SaveFlag*/)) {
         // initialize the snapshot as though it almost represents an FBO layer so deferred draw
         // operations will be able to store and restore the current clip and transform info, and
         // quick rejection will be correct (for display lists)
@@ -660,7 +663,8 @@ bool OpenGLRenderer::createLayer(float left, float top, float right, float botto
     LAYER_LOGD("Requesting layer %.2fx%.2f", right - left, bottom - top);
     LAYER_LOGD("Layer cache size = %d", mCaches.layerCache.getSize());
 
-    const bool fboLayer = flags & SkCanvas::kClipToLayer_SaveFlag;
+    // Modified by Jeff
+    const bool fboLayer = true /*flags & SkCanvas::kClipToLayer_SaveFlag*/;
 
     // Window coordinates of the layer
     Rect clip;
@@ -950,7 +954,7 @@ void OpenGLRenderer::composeLayerRegion(Layer* layer, const Rect& rect) {
     if (CC_UNLIKELY(layer->region.isEmpty())) return; // nothing to draw
 
     if (layer->getConvexMask()) {
-        save(SkCanvas::kClip_SaveFlag | SkCanvas::kMatrix_SaveFlag);
+        save(1 /* Modified by Jeff. SkCanvas::kClip_SaveFlag | SkCanvas::kMatrix_SaveFlag*/);
 
         // clip to the area of the layer the mask can be larger
         clipRect(rect.left, rect.top, rect.right, rect.bottom, SkRegion::kIntersect_Op);
@@ -1918,7 +1922,7 @@ void OpenGLRenderer::drawCircle(float x, float y, float radius, const SkPaint* p
 
         // Mask the ripple path by the projection mask, now that it's
         // in local space. Note that this can create CCW paths.
-        Op(path, maskPath, kIntersect_PathOp, &path);
+        Op(path, maskPath, kIntersect_SkPathOp, &path);
     }
     drawConvexPath(path, p);
 }
@@ -2343,7 +2347,7 @@ void OpenGLRenderer::drawLayer(Layer* layer, float x, float y) {
     if (layer->isTextureLayer()) {
         transform = &layer->getTransform();
         if (!transform->isIdentity()) {
-            save(SkCanvas::kMatrix_SaveFlag);
+            save(1 /*Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
             concatMatrix(*transform);
         }
     }

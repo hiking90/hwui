@@ -47,7 +47,8 @@ protected:
     virtual SkSurface* onNewSurface(const SkImageInfo&, const SkSurfaceProps&) override;
 
     virtual void willSave() override;
-    virtual SaveLayerStrategy willSaveLayer(const SkRect*, const SkPaint*, SaveFlags) override;
+    // Modified by Jeff
+    // virtual SaveLayerStrategy willSaveLayer(const SkRect*, const SkPaint*, SaveFlags) override;
     virtual void willRestore() override;
 
     virtual void didConcat(const SkMatrix&) override;
@@ -62,12 +63,16 @@ protected:
     virtual void onDrawPath(const SkPath& path, const SkPaint&) override;
     virtual void onDrawBitmap(const SkBitmap&, SkScalar left, SkScalar top,
                               const SkPaint*) override;
+    // Modified by Jeff
     virtual void onDrawBitmapRect(const SkBitmap&, const SkRect* src, const SkRect& dst,
-                                  const SkPaint* paint, DrawBitmapRectFlags flags) override;
+                                  const SkPaint* paint, SrcRectConstraint) override;
     virtual void onDrawBitmapNine(const SkBitmap& bitmap, const SkIRect& center,
                                   const SkRect& dst, const SkPaint*) override;
+    // Modified by Jeff
+#if 0
     virtual void onDrawSprite(const SkBitmap&, int left, int top,
                               const SkPaint*) override;
+#endif
     virtual void onDrawVertices(VertexMode, int vertexCount, const SkPoint vertices[],
                                 const SkPoint texs[], const SkColor colors[], SkXfermode*,
                                 const uint16_t indices[], int indexCount,

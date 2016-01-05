@@ -270,7 +270,8 @@ void TextureCache::generateTexture(const SkBitmap* bitmap, Texture* texture, boo
     // force a glTexImage2D to discard the mipmap levels
     const bool resize = !regenerate || bitmap->width() != int(texture->width) ||
             bitmap->height() != int(texture->height) ||
-            (regenerate && canMipMap && texture->mipMap && !bitmap->hasHardwareMipMap());
+            // Modified by Jeff
+            (regenerate && canMipMap && texture->mipMap && !true /*bitmap->hasHardwareMipMap()*/);
 
     if (!regenerate) {
         glGenTextures(1, &texture->id);
@@ -311,7 +312,8 @@ void TextureCache::generateTexture(const SkBitmap* bitmap, Texture* texture, boo
     }
 
     if (canMipMap) {
-        texture->mipMap = bitmap->hasHardwareMipMap();
+        // Modified by Jeff
+        texture->mipMap = true; // bitmap->hasHardwareMipMap();
         if (texture->mipMap) {
             glGenerateMipmap(GL_TEXTURE_2D);
         }

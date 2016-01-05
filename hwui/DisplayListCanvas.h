@@ -51,7 +51,9 @@ namespace uirenderer {
 ///////////////////////////////////////////////////////////////////////////////
 
 class DeferredDisplayList;
+#ifndef _FOR_NON_ANDROID
 class DeferredLayerUpdater;
+#endif
 class DisplayListOp;
 class DrawOp;
 class RenderNode;
@@ -114,7 +116,9 @@ public:
 // ----------------------------------------------------------------------------
 // HWUI Canvas draw operations - special
 // ----------------------------------------------------------------------------
+#ifndef _FOR_NON_ANDROID
     void drawLayer(DeferredLayerUpdater* layerHandle, float x, float y);
+#endif
     void drawRenderNode(RenderNode* renderNode);
 
     // TODO: rename for consistency
@@ -149,14 +153,15 @@ public:
 // ----------------------------------------------------------------------------
     // Save (layer)
     virtual int getSaveCount() const override { return mState.getSaveCount(); }
-    virtual int save(SkCanvas::SaveFlags flags) override;
+    // Modified by Jeff
+    virtual int save(/*SkCanvas::SaveFlags*/int flags) override;
     virtual void restore() override;
     virtual void restoreToCount(int saveCount) override;
 
     virtual int saveLayer(float left, float top, float right, float bottom, const SkPaint* paint,
-        SkCanvas::SaveFlags flags) override;
+        /*Modified by Jeff. SkCanvas::SaveFlags*/ int flags) override;
     virtual int saveLayerAlpha(float left, float top, float right, float bottom,
-            int alpha, SkCanvas::SaveFlags flags) override {
+            int alpha, /*SkCanvas::SaveFlags*/int flags) override {
         SkPaint paint;
         paint.setAlpha(alpha);
         return saveLayer(left, top, right, bottom, &paint, flags);

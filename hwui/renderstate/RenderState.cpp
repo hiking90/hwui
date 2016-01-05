@@ -14,17 +14,26 @@
  * limitations under the License.
  */
 #include "renderstate/RenderState.h"
-
+#ifndef _FOR_NON_ANDROID
 #include "renderthread/CanvasContext.h"
 #include "renderthread/EglManager.h"
+#else
+#include "utils/MathUtils.h"
+#include "Snapshot.h"
+#endif
 #include "utils/GLUtils.h"
 
 namespace android {
 namespace uirenderer {
 
+#ifndef _FOR_NON_ANDROID
 RenderState::RenderState(renderthread::RenderThread& thread)
         : mRenderThread(thread)
         , mViewportWidth(0)
+#else
+RenderState::RenderState()
+        : mViewportWidth(0)
+#endif
         , mViewportHeight(0)
         , mFramebuffer(0) {
     mThreadId = pthread_self();
@@ -175,8 +184,10 @@ void RenderState::debugOverdraw(bool enable, bool clear) {
 
 void RenderState::requireGLContext() {
     assertOnGLThread();
+#ifndef _FOR_NON_ANDROID
     LOG_ALWAYS_FATAL_IF(!mRenderThread.eglManager().hasEglContext(),
             "No GL context!");
+#endif
 }
 
 void RenderState::assertOnGLThread() {
@@ -184,11 +195,13 @@ void RenderState::assertOnGLThread() {
     LOG_ALWAYS_FATAL_IF(!pthread_equal(mThreadId, curr), "Wrong thread!");
 }
 
-class DecStrongTask : public renderthread::RenderTask {
+// Modified by Jeff
+class DecStrongTask /* : public renderthread::RenderTask */ {
 public:
     DecStrongTask(VirtualLightRefBase* object) : mObject(object) {}
+    virtual ~DecStrongTask() {}
 
-    virtual void run() override {
+    virtual void run() /*override*/ {
         mObject->decStrong(nullptr);
         mObject = nullptr;
         delete this;
@@ -199,7 +212,11 @@ private:
 };
 
 void RenderState::postDecStrong(VirtualLightRefBase* object) {
+#ifndef _FOR_NON_ANDROID
     mRenderThread.queue(new DecStrongTask(object));
+#else
+    (new DecStrongTask(object))->run();
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////

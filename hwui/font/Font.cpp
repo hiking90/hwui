@@ -479,7 +479,11 @@ CachedGlyphInfo* Font::cacheGlyph(const SkPaint* paint, glyph_t glyph, bool prec
     SkAutoGlyphCache autoCache(*paint, &deviceProperties, &mDescription.mLookupTransform);
     const SkGlyph& skiaGlyph = GET_METRICS(autoCache.getCache(), glyph);
     newGlyph->mIsValid = false;
+#ifndef _FOR_NON_ANDROID
     newGlyph->mGlyphIndex = skiaGlyph.fID;
+#else
+    newGlyph->mGlyphIndex = skiaGlyph.getGlyphID();
+#endif
 
     updateGlyphCache(paint, skiaGlyph, autoCache.getCache(), newGlyph, precaching);
 

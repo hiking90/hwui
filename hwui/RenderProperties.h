@@ -391,7 +391,7 @@ public:
     bool isPivotExplicitlySet() const {
         return mPrimitiveFields.mPivotExplicitlySet;
     }
-
+#ifndef _FOR_NON_ANDROID
     bool setCameraDistance(float distance) {
         if (distance != getCameraDistance()) {
             mPrimitiveFields.mMatrixOrPivotDirty = true;
@@ -405,7 +405,7 @@ public:
         // TODO: update getCameraLocationZ() to be const
         return const_cast<Sk3DView*>(&mComputedFields.mTransformCamera)->getCameraLocationZ();
     }
-
+#endif
     bool setLeft(int left) {
         if (RP_SET(mPrimitiveFields.mLeft, left)) {
             mPrimitiveFields.mWidth = mPrimitiveFields.mRight - mPrimitiveFields.mLeft;

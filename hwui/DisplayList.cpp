@@ -49,9 +49,12 @@ void DisplayListData::cleanupResources() {
 
     for (size_t i = 0; i < pathResources.size(); i++) {
         const SkPath* path = pathResources.itemAt(i);
+        // FIXME: Jeff
+        /*
         if (path->unique() && Caches::hasInstance()) {
             Caches::getInstance().pathCache.removeDeferred(path);
         }
+        */
         delete path;
     }
 

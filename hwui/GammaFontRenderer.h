@@ -17,6 +17,7 @@
 #ifndef ANDROID_HWUI_GAMMA_FONT_RENDERER_H
 #define ANDROID_HWUI_GAMMA_FONT_RENDERER_H
 
+#include <memory>
 #include <SkPaint.h>
 
 #include "FontRenderer.h"

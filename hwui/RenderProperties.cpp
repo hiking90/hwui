@@ -112,7 +112,9 @@ RenderProperties& RenderProperties::operator=(const RenderProperties& other) {
         mPrimitiveFields = other.mPrimitiveFields;
         setStaticMatrix(other.getStaticMatrix());
         setAnimationMatrix(other.getAnimationMatrix());
+#ifndef _FOR_NON_ANDROID
         setCameraDistance(other.getCameraDistance());
+#endif
         mLayerProperties = other.layerProperties();
 
         // Force recalculation of the matrix, since other's dirty bit may be clear
@@ -166,7 +168,7 @@ void RenderProperties::debugOutputProperties(const int level) const {
                     (int)layerBounds.left, (int)layerBounds.top,
                     (int)layerBounds.right, (int)layerBounds.bottom,
                     (int)(mPrimitiveFields.mAlpha * 255),
-                    SkCanvas::kHasAlphaLayer_SaveFlag | SkCanvas::kClipToLayer_SaveFlag);
+                    1 /* Modified by Jeff. SkCanvas::kHasAlphaLayer_SaveFlag | SkCanvas::kClipToLayer_SaveFlag*/);
         }
 
 

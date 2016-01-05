@@ -18,7 +18,9 @@
 
 #include "ResourceCache.h"
 #include "DeferredDisplayList.h"
+#ifndef _FOR_NON_ANDROID
 #include "DeferredLayerUpdater.h"
+#endif
 #include "DisplayListOp.h"
 #include "RenderNode.h"
 #include "utils/PaintUtils.h"
@@ -110,7 +112,7 @@ SkCanvas* DisplayListCanvas::asSkCanvas() {
     return mSkiaCanvasProxy.get();
 }
 
-int DisplayListCanvas::save(SkCanvas::SaveFlags flags) {
+int DisplayListCanvas::save(/*SkCanvas::SaveFlags*/int flags) {
     addStateOp(new (alloc()) SaveOp((int) flags));
     return mState.save((int) flags);
 }
@@ -133,9 +135,10 @@ void DisplayListCanvas::restoreToCount(int saveCount) {
 }
 
 int DisplayListCanvas::saveLayer(float left, float top, float right, float bottom,
-        const SkPaint* paint, SkCanvas::SaveFlags flags) {
+        const SkPaint* paint, /*Modified by Jeff. SkCanvas::SaveFlags*/ int flags) {
     // force matrix/clip isolation for layer
-    flags |= SkCanvas::kClip_SaveFlag | SkCanvas::kMatrix_SaveFlag;
+    // Modified by Jeff.
+    // flags |= SkCanvas::kClip_SaveFlag | SkCanvas::kMatrix_SaveFlag;
 
     paint = refPaint(paint);
     addStateOp(new (alloc()) SaveLayerOp(left, top, right, bottom, paint, (int) flags));
@@ -229,12 +232,14 @@ void DisplayListCanvas::drawRenderNode(RenderNode* renderNode) {
     addRenderNodeOp(op);
 }
 
+#ifndef _FOR_NON_ANDROID
 void DisplayListCanvas::drawLayer(DeferredLayerUpdater* layerHandle, float x, float y) {
     // We ref the DeferredLayerUpdater due to its thread-safe ref-counting
     // semantics.
     mDisplayListData->ref(layerHandle);
     addDrawOp(new (alloc()) DrawLayerOp(layerHandle->backingLayer(), x, y));
 }
+#endif
 
 void DisplayListCanvas::drawBitmap(const SkBitmap* bitmap, const SkPaint* paint) {
     bitmap = refBitmap(*bitmap);
@@ -245,7 +250,7 @@ void DisplayListCanvas::drawBitmap(const SkBitmap* bitmap, const SkPaint* paint)
 
 void DisplayListCanvas::drawBitmap(const SkBitmap& bitmap, float left, float top,
         const SkPaint* paint) {
-    save(SkCanvas::kMatrix_SaveFlag);
+    save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
     translate(left, top);
     drawBitmap(&bitmap, paint);
     restore();
@@ -266,7 +271,7 @@ void DisplayListCanvas::drawBitmap(const SkBitmap& bitmap, const SkMatrix& matri
         drawBitmap(bitmap, src.fLeft, src.fTop, src.fRight, src.fBottom,
                    dst.fLeft, dst.fTop, dst.fRight, dst.fBottom, paint);
     } else {
-        save(SkCanvas::kMatrix_SaveFlag);
+        save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
         concat(matrix);
         drawBitmap(&bitmap, paint);
         restore();
@@ -282,7 +287,7 @@ void DisplayListCanvas::drawBitmap(const SkBitmap& bitmap, float srcLeft, float 
             && (srcBottom - srcTop == dstBottom - dstTop)
             && (srcRight - srcLeft == dstRight - dstLeft)) {
         // transform simple rect to rect drawing case into position bitmap ops, since they merge
-        save(SkCanvas::kMatrix_SaveFlag);
+        save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
         translate(dstLeft, dstTop);
         drawBitmap(&bitmap, paint);
         restore();
@@ -296,7 +301,7 @@ void DisplayListCanvas::drawBitmap(const SkBitmap& bitmap, float srcLeft, float 
                 // Apply the scale transform on the canvas, so that the shader
                 // effectively calculates positions relative to src rect space
 
-                save(SkCanvas::kMatrix_SaveFlag);
+                save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
                 translate(dstLeft, dstTop);
                 scale(scaleX, scaleY);
 
@@ -595,7 +600,7 @@ void DisplayListCanvas::refBitmapsInShader(const SkShader* shader) {
     // it to the bitmap pile
     SkBitmap bitmap;
     SkShader::TileMode xy[2];
-    if (shader->asABitmap(&bitmap, nullptr, xy) == SkShader::kDefault_BitmapType) {
+    if (shader->isABitmap(&bitmap, nullptr, xy) == true /* Modified by Jeff. SkShader::kDefault_BitmapType*/) {
         refBitmap(bitmap);
         return;
     }

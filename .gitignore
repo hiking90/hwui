@@ -1,6 +1,5 @@
 *.o
 .*
-depot_tools/
-skia/
+*.a
 tools/tools
 *.sublime-*

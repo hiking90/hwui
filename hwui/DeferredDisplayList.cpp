@@ -432,7 +432,7 @@ void DeferredDisplayList::addSave(OpenGLRenderer& renderer, SaveOp* op, int newS
     int saveFlags = op->getFlags();
     DEFER_LOGD("%p adding saveOp %p, flags %x, new count %d", this, op, saveFlags, newSaveCount);
 
-    if (recordingComplexClip() && (saveFlags & SkCanvas::kClip_SaveFlag)) {
+    if (recordingComplexClip() && (true /* Modified by Jeff. saveFlags & SkCanvas::kClip_SaveFlag*/)) {
         // store and replay the save operation, as it may be needed to correctly playback the clip
         DEFER_LOGD("    adding save barrier with new save count %d", newSaveCount);
         storeStateOpBarrier(renderer, op);
@@ -643,7 +643,7 @@ void DeferredDisplayList::flush(OpenGLRenderer& renderer, Rect& dirty) {
     renderer.eventMark("Flush");
 
     // save and restore so that reordering doesn't affect final state
-    renderer.save(SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag);
+    renderer.save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag*/);
 
     if (CC_LIKELY(mAvoidOverdraw)) {
         for (unsigned int i = 1; i < mBatches.size(); i++) {

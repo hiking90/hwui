@@ -18,6 +18,24 @@
 
 #include <cutils/log.h>
 #include <SkPatchUtils.h>
+#include <SkRRect.h>
+#include <SkPath.h>
+#include <SkTemplates.h>
+
+// Added by Jeff
+template <bool>
+struct SkCompileAssert {
+};
+
+// Uses static_cast<bool>(expr) instead of bool(expr) due to
+// https://connect.microsoft.com/VisualStudio/feedback/details/832915
+
+// The extra parentheses in SkCompileAssert<(...)> are a work around for
+// http://gcc.gnu.org/bugzilla/show_bug.cgi?id=57771
+// which was fixed in gcc 4.8.2.
+#define SK_COMPILE_ASSERT(expr, msg) \
+    typedef SkCompileAssert<(static_cast<bool>(expr))> \
+            msg[static_cast<bool>(expr) ? 1 : -1] SK_UNUSED
 
 namespace android {
 namespace uirenderer {
@@ -99,8 +117,9 @@ void SkiaCanvasProxy::onDrawBitmap(const SkBitmap& bitmap, SkScalar left, SkScal
     mCanvas->drawBitmap(bitmap, left, top, paint);
 }
 
+// Modified by Jeff
 void SkiaCanvasProxy::onDrawBitmapRect(const SkBitmap& bitmap, const SkRect* srcPtr,
-        const SkRect& dst, const SkPaint* paint, DrawBitmapRectFlags) {
+        const SkRect& dst, const SkPaint* paint, SrcRectConstraint) {
     SkRect src = (srcPtr) ? *srcPtr : SkRect::MakeWH(bitmap.width(), bitmap.height());
     mCanvas->drawBitmap(bitmap, src.fLeft, src.fTop, src.fRight, src.fBottom,
                         dst.fLeft, dst.fTop, dst.fRight, dst.fBottom, paint);
@@ -112,6 +131,8 @@ void SkiaCanvasProxy::onDrawBitmapNine(const SkBitmap& bitmap, const SkIRect& ce
     SkDEBUGFAIL("SkiaCanvasProxy::onDrawBitmapNine is not yet supported");
 }
 
+// Modified by Jeff
+#if 0
 void SkiaCanvasProxy::onDrawSprite(const SkBitmap& bitmap, int left, int top,
         const SkPaint* paint) {
     mCanvas->save(SkCanvas::kMatrixClip_SaveFlag);
@@ -119,7 +140,7 @@ void SkiaCanvasProxy::onDrawSprite(const SkBitmap& bitmap, int left, int top,
     mCanvas->drawBitmap(bitmap, left, top, paint);
     mCanvas->restore();
 }
-
+#endif
 void SkiaCanvasProxy::onDrawVertices(VertexMode mode, int vertexCount, const SkPoint vertices[],
         const SkPoint texs[], const SkColor colors[], SkXfermode*, const uint16_t indices[],
         int indexCount, const SkPaint& paint) {
@@ -141,9 +162,11 @@ SkSurface* SkiaCanvasProxy::onNewSurface(const SkImageInfo&, const SkSurfaceProp
 }
 
 void SkiaCanvasProxy::willSave() {
-    mCanvas->save(SkCanvas::kMatrixClip_SaveFlag);
+    mCanvas->save(1 /* Modified by Jeff. SkCanvas::kMatrixClip_SaveFlag*/);
 }
 
+// Modified by Jeff
+#if 0
 SkCanvas::SaveLayerStrategy SkiaCanvasProxy::willSaveLayer(const SkRect* rectPtr,
         const SkPaint* paint, SaveFlags flags) {
     SkRect rect;
@@ -155,7 +178,7 @@ SkCanvas::SaveLayerStrategy SkiaCanvasProxy::willSaveLayer(const SkRect* rectPtr
     mCanvas->saveLayer(rect.fLeft, rect.fTop, rect.fRight, rect.fBottom, paint, flags);
     return SkCanvas::kNoLayer_SaveLayerStrategy;
 }
-
+#endif
 void SkiaCanvasProxy::willRestore() {
     mCanvas->restore();
 }

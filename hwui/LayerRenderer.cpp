@@ -326,7 +326,8 @@ void LayerRenderer::destroyLayer(Layer* layer) {
 }
 
 void LayerRenderer::flushLayer(RenderState& renderState, Layer* layer) {
-#ifdef GL_EXT_discard_framebuffer
+// #ifdef GL_EXT_discard_framebuffer
+#if 0 // FIXME: Jeff. Where GL_EXT_discard_framebuffer is defined.
     if (!layer) return;
 
     GLuint fbo = layer->getFbo();

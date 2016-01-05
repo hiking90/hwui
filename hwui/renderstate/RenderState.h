@@ -101,11 +101,12 @@ private:
     void resumeFromFunctorInvoke();
     void assertOnGLThread();
 
-    RenderState(renderthread::RenderThread& thread);
+    // Modified by Jeff
+    RenderState(/* renderthread::RenderThread& thread */);
     ~RenderState();
 
-
-    renderthread::RenderThread& mRenderThread;
+    // Modified by Jeff
+    // renderthread::RenderThread& mRenderThread;
     Caches* mCaches = nullptr;
 
     Blend* mBlend = nullptr;

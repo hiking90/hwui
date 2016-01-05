@@ -34,7 +34,8 @@
 #include "TreeInfo.h"
 #include "utils/MathUtils.h"
 #include "utils/TraceUtils.h"
-#include "renderthread/CanvasContext.h"
+// Modified by Jeff
+// #include "renderthread/CanvasContext.h"
 
 namespace android {
 namespace uirenderer {
@@ -91,7 +92,7 @@ void RenderNode::output(uint32_t level) {
             (properties().getProjectBackwards() ? ", projected" : ""),
             (mLayer != nullptr ? ", on HW Layer" : ""));
     ALOGD("%*s%s %d", level * 2, "", "Save",
-            SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag);
+            1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag*/);
 
     properties().debugOutputProperties(level);
     int flags = DisplayListOp::kOpLogFlag_Recurse;
@@ -214,12 +215,14 @@ void RenderNode::pushLayerUpdate(TreeInfo& info) {
         info.renderer->pushLayerUpdate(mLayer);
     }
 
+#if 0   // Modified by Jeff
     if (info.canvasContext) {
         // There might be prefetched layers that need to be accounted for.
         // That might be us, so tell CanvasContext that this layer is in the
         // tree and should not be destroyed.
         info.canvasContext->markLayerInUse(this);
     }
+#endif
 }
 
 /**
@@ -431,7 +434,7 @@ void RenderNode::setViewProperties(OpenGLRenderer& renderer, T& handler) {
                     layerBounds.left, layerBounds.top,
                     layerBounds.right, layerBounds.bottom,
                     (int) (properties().getAlpha() * 255),
-                    SkCanvas::kHasAlphaLayer_SaveFlag | SkCanvas::kClipToLayer_SaveFlag);
+                    1 /* Modified by Jeff. SkCanvas::kHasAlphaLayer_SaveFlag | SkCanvas::kClipToLayer_SaveFlag */);
             handler(op, PROPERTY_SAVECOUNT, properties().getClipToBounds());
         }
 
@@ -695,7 +698,7 @@ void RenderNode::issueDrawShadowOperation(const Matrix4& transformFromParent, T&
     if (revealClipPath) {
         frameAllocatedPath = handler.allocPathForFrame();
 
-        Op(*outlinePath, *revealClipPath, kIntersect_PathOp, frameAllocatedPath);
+        Op(*outlinePath, *revealClipPath, kIntersect_SkPathOp, frameAllocatedPath);
         outlinePath = frameAllocatedPath;
     }
 
@@ -711,7 +714,7 @@ void RenderNode::issueDrawShadowOperation(const Matrix4& transformFromParent, T&
         clipBoundsPath.addRect(clipBounds.left, clipBounds.top,
                 clipBounds.right, clipBounds.bottom);
 
-        Op(*outlinePath, clipBoundsPath, kIntersect_PathOp, frameAllocatedPath);
+        Op(*outlinePath, clipBoundsPath, kIntersect_SkPathOp, frameAllocatedPath);
         outlinePath = frameAllocatedPath;
     }
 
@@ -736,7 +739,7 @@ void RenderNode::issueOperationsOf3dChildren(ChildrenSelectMode mode,
 
     // Apply the base transform of the parent of the 3d children. This isolates
     // 3d children of the current chunk from transformations made in previous chunks.
-    int rootRestoreTo = renderer.save(SkCanvas::kMatrix_SaveFlag);
+    int rootRestoreTo = renderer.save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
     renderer.setMatrix(initialTransform);
 
     /**
@@ -780,7 +783,7 @@ void RenderNode::issueOperationsOf3dChildren(ChildrenSelectMode mode,
 
         // only the actual child DL draw needs to be in save/restore,
         // since it modifies the renderer's matrix
-        int restoreTo = renderer.save(SkCanvas::kMatrix_SaveFlag);
+        int restoreTo = renderer.save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
 
         DrawRenderNodeOp* childOp = zTranslatedNodes[drawIndex].value;
 
@@ -802,7 +805,7 @@ void RenderNode::issueOperationsOfProjectedChildren(OpenGLRenderer& renderer, T&
     int restoreTo = renderer.getSaveCount();
 
     LinearAllocator& alloc = handler.allocator();
-    handler(new (alloc) SaveOp(SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag),
+    handler(new (alloc) SaveOp(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag*/),
             PROPERTY_SAVECOUNT, properties().getClipToBounds());
 
     // Transform renderer to match background we're projecting onto
@@ -822,7 +825,7 @@ void RenderNode::issueOperationsOfProjectedChildren(OpenGLRenderer& renderer, T&
         DrawRenderNodeOp* childOp = mProjectedNodes[i];
 
         // matrix save, concat, and restore can be done safely without allocating operations
-        int restoreTo = renderer.save(SkCanvas::kMatrix_SaveFlag);
+        int restoreTo = renderer.save(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag*/);
         renderer.concatMatrix(childOp->mTransformFromCompositingAncestor);
         childOp->mSkipInOrderDraw = false; // this is horrible, I'm so sorry everyone
         handler(childOp, renderer.getSaveCount() - 1, properties().getClipToBounds());
@@ -879,7 +882,7 @@ void RenderNode::issueOperations(OpenGLRenderer& renderer, T& handler) {
 
     LinearAllocator& alloc = handler.allocator();
     int restoreTo = renderer.getSaveCount();
-    handler(new (alloc) SaveOp(SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag),
+    handler(new (alloc) SaveOp(1 /* Modified by Jeff. SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag*/),
             PROPERTY_SAVECOUNT, properties().getClipToBounds());
 
     DISPLAY_LIST_LOGD("%*sSave %d %d", (handler.level() + 1) * 2, "",
